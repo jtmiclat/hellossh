@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -10,13 +11,14 @@ import (
 	"os/exec"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
 
 func runCommand(terminal *term.Terminal, command string, args []string) {
-	cmd := exec.Command("ls", args...)
+	cmd := exec.Command(command, args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -24,6 +26,22 @@ func runCommand(terminal *term.Terminal, command string, args []string) {
 		log.Fatal(err)
 	}
 	fmt.Fprint(terminal, out.String())
+}
+func typingPrint(w io.Writer, text string) {
+	for _, char := range text {
+		fmt.Fprint(w, fmt.Sprintf("%c", char))
+		time.Sleep(time.Millisecond * 25)
+	}
+}
+func hack(w io.Writer) {
+	typingPrint(w, "Hacking in progresss...\n")
+	fmt.Fprintln(w, "")
+	ticker := time.Tick(time.Millisecond * 50)
+	for i := 1; i <= 100; i++ {
+		<-ticker
+		fmt.Fprintln(w, fmt.Sprintf("\033[1A \033[K %3d/100", i))
+	}
+	typingPrint(w, "You're data has been hacked. Thanks!")
 }
 
 var farewellText string = "So long and thanks for all the fish!"
@@ -95,7 +113,7 @@ func main() {
 				go func() {
 					defer channel.Close()
 
-					fmt.Fprintln(channel, "Welcome (^o^)/! Type help for available commands")
+					typingPrint(channel, "Welcome (^o^)/! Type help for available commands")
 					fmt.Fprintln(channel, "")
 					fmt.Fprintln(channel, "")
 					terminal := term.NewTerminal(channel, `(^o^)/ ~ `)
@@ -126,6 +144,9 @@ func main() {
 						"exit": func(args []string) {
 							fmt.Fprintln(terminal, "So long, and thanks for all the fish!")
 							channel.Close()
+						},
+						"hack": func(args []string) {
+							hack(terminal)
 						},
 					}
 					for {
